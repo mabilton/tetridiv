@@ -1,12 +1,7 @@
 import warnings
-import numpy as np
+import importlib
 from itertools import combinations
-# Optional imports:
-import dolfinx
-from mpi4py import MPI
-import meshio
-import vtk
-import pyvista
+import numpy as np
 
 _supported_mesh_types = ('meshio', 'pyvista', 'dolfinx')
 
@@ -75,6 +70,7 @@ def _get_cells(mesh, mesh_type, cell_type):
         cell_key = 'tetra' if cell_type=='tet' else 'triangle'
         cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, mesh_type, cell_type)
     elif 'pyvista' in mesh_type:
+        import vtk
         cell_key = vtk.VTK_TETRA if cell_type=='tet' else vtk.VTK_TRIANGLE
         cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, mesh_type, cell_type)
     elif 'dolfinx' in mesh_type:
@@ -299,16 +295,19 @@ def _create_mesh(points, cells, mesh, mesh_type, cell_type):
     if mesh_type is None:
         mesh = {'points': points, 'cells': cells}
     elif 'meshio' in mesh_type:
+        import meshio
         cell_key = 'hexahedron' if cell_type=='tet' else 'quad'
         mesh = meshio.Mesh(points=points, cells={cell_key: cells})
     elif 'pyvista' in mesh_type:
+        import pyvista, vtk
         cell_key = vtk.VTK_HEXAHEDRON if cell_type=='tet' else vtk.VTK_QUAD
         mesh = pyvista.UnstructuredGrid({cell_key: cells}, points)
     elif 'dolfinx' in mesh_type:
         # Hexahedra and quadrilaterals are assigned unique identifying int - See: http://gmsh.info//doc/texinfo/gmsh.html#MSH-file-format
+        import dolfinx, mpi4py
         gmsh_mesh_num = 5 if cell_type=='tet' else 3
         num_spatial_dim = points.shape[-1]
         domain = dolfinx.io.ufl_mesh_from_gmsh(gmsh_mesh_num, num_spatial_dim)
-        mesh = dolfinx.mesh.create_mesh(MPI.COMM_WORLD, cells, points, domain)
+        mesh = dolfinx.mesh.create_mesh(mpi4py.COMM_WORLD, cells, points, domain)
         
     return mesh   
