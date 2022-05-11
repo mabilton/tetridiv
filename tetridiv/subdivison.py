@@ -63,7 +63,7 @@ def _get_points_and_cells(mesh, points, cells, cell_type, input_type):
     _check_inputs(mesh, points, cells)
     
     # Grid attribute is just a pyvista mesh:
-    if 'tetgen' in input_type:
+    if (input_type is not None) and 'tetgen' in input_type:
         mesh = mesh.grid
         input_type = 'pyvista'
     
