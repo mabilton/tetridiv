@@ -3,106 +3,138 @@ import importlib
 from itertools import combinations
 import numpy as np
 
-_supported_mesh_types = ('meshio', 'pyvista', 'dolfinx')
-
 #
 #   Main routines
 #
 
-def tet2hex(mesh=None, points=None, cells=None):
-    return _main(mesh, points, cells, cell_type='tet')
+def tet2hex(mesh=None, points=None, cells=None, output_type=None):
+    return _main(mesh, points, cells, output_type, cell_type='tet')
     
-def tri2quad(mesh=None, points=None, cells=None):
-    return _main(mesh, points, cells, cell_type='tri')
+def tri2quad(mesh=None, points=None, cells=None, output_type=None):
+    return _main(mesh, points, cells, output_type, cell_type='tri')
 
-def _main(mesh, points, cells, cell_type):
-    mesh_type = _identify_meshtype(mesh)
-    points, cells = _get_points_and_cells(mesh, points, cells, mesh_type, cell_type)
-    cells = _ensure_cells_are_ints(cells)
-    _check_points_and_cells(points, cells, cell_type)
+def _main(mesh, points, cells, output_type, cell_type):
+    input_type = _identify_input_type(mesh)
+    output_type = _deduce_output_type(output_type, input_type)
+    points, cells = _get_points_and_cells(mesh, points, cells, cell_type, input_type)
     points, cells = _subdivide_mesh(points, cells, cell_type)
-    return _create_mesh(points, cells, mesh, mesh_type, cell_type)
+    return _create_mesh(points, cells, mesh, output_type, cell_type)
 
-#
-#   Input Preprocessing
-#
-
-def _identify_meshtype(mesh):
+_supported_mesh_types = ('meshio', 'pyvista', 'dolfinx', 'tetgen')
+def _identify_input_type(mesh):
     if mesh is None:
-        mesh_type = None
+        input_type = None
     else:
         class_name = str(type(mesh))
-        mesh_type_matches = [name in class_name for name in _supported_mesh_types]
-        if not any(mesh_type_matches):
-            mesh_type = None
+        input_type_matches = [name in class_name for name in _supported_mesh_types]
+        if not any(input_type_matches):
+            input_type = None
         else:
-            # Take first match in list:
-            mesh_type_idx = np.argmax(mesh_type_matches)
-            mesh_type = _supported_mesh_types[mesh_type_idx]
+           input_type = _take_first_match(input_type_matches)
+    return input_type
+
+def _deduce_output_type(output_type, input_type):
+    
+    if output_type is not None:
+        output_type_matches = [output_type.lower() in name for name in _supported_mesh_types]
+        if not any(output_type_matches):
+            raise ValueError(f"'{output_type}' is not a valid output type; either leave output_type argument unspecified "
+                             f"or choose one of the following valid options: {', '.join(_supported_mesh_types)}.")
+        output_type = _take_first_match(output_type_matches)
+    elif input_type is not None:
+        output_type = input_type
+    
+    if 'tetgen' in output_type:
+        output_type = 'pyvista'
+
+    return output_type
+
+def _take_first_match(mesh_matches):
+    mesh_type_idx = np.argmax(mesh_matches)
+    mesh_type = _supported_mesh_types[mesh_type_idx]
     return mesh_type
 
-def _get_points_and_cells(mesh, points, cells, mesh_type, cell_type):
+#
+#   Point & Cells Retrieval Methods
+#
+
+def _get_points_and_cells(mesh, points, cells, cell_type, input_type):
+    
+    _check_inputs(mesh, points, cells)
+    
+    # Grid attribute is just a pyvista mesh:
+    if 'tetgen' in input_type:
+        mesh = mesh.grid
+        input_type = 'pyvista'
+    
+    if points is None:
+        points = _get_points(mesh, input_type)
+    if cells is None:
+        cells = _get_cells(mesh, input_type, cell_type)
+    
+    # Check retrieved values:
+    cells = _ensure_cell_idxs_are_ints(cells)
+    _check_points_and_cells(points, cells, cell_type)
+
+    return points, cells
+
+def _check_inputs(mesh, points, cells):
     if (mesh is None) and ((points is None) or (cells is None)):
         raise ValueError('Must specify either mesh OR points and cells as input(s).')
     elif all(val is None for val in [mesh, points, cells]):
         raise ValueError('Must specify either mesh OR points and cells, but not both.')
-    if points is None:
-        points = _get_points(mesh, mesh_type)
-    if cells is None:
-        cells = _get_cells(mesh, mesh_type, cell_type)
-    return points, cells
 
-def _get_points(mesh, mesh_type):
-    if mesh_type is None:
+def _get_points(mesh, input_type):
+    if input_type is None:
         _raise_unsupported_mesh_error(mesh)
-    elif 'meshio' in mesh_type:
+    elif 'meshio' in input_type:
         points = mesh.points
-    elif 'pyvista' in mesh_type:
+    elif 'pyvista' in input_type:
         points = np.array(mesh.points)
-    elif 'dolfinx' in mesh_type:
+    elif 'dolfinx' in input_type:
         points = mesh.geometry.x
     return points
     
-def _get_cells(mesh, mesh_type, cell_type):
-    if mesh_type is None:
+def _get_cells(mesh, input_type, cell_type):
+    if input_type is None:
         _raise_unsupported_mesh_error(mesh)
-    elif 'meshio' in mesh_type:
+    elif 'meshio' in input_type:
         cell_key = 'tetra' if cell_type=='tet' else 'triangle'
-        cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, mesh_type, cell_type)
-    elif 'pyvista' in mesh_type:
+        cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, input_type, cell_type)
+    elif 'pyvista' in input_type:
         import vtk
         cell_key = vtk.VTK_TETRA if cell_type=='tet' else vtk.VTK_TRIANGLE
-        cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, mesh_type, cell_type)
-    elif 'dolfinx' in mesh_type:
+        cells = _get_cells_from_cells_dict(mesh.cells_dict, cell_key, input_type, cell_type)
+    elif 'dolfinx' in input_type:
         flattened_cells = mesh.geometry.dofmap.array
-        cells = _reshape_cells_array(flattened_cells, mesh_type, cell_type)
+        cells = _reshape_cells_array(flattened_cells, input_type, cell_type)
     return cells    
 
 def _raise_unsupported_mesh_error(mesh):
-    raise ValueError(f'{type(mesh)} meshes are not natively supported; instead, either explicitly specify' 
+    raise ValueError(f'{type(mesh)} meshes are not natively supported; instead, either explicitly specify ' 
                      "the vertex coordinates (i.e. points) and topology (i.e. cells) of your mesh OR "
                      f'convert your mesh to one of the following formats: {", ".join(_supported_mesh_types)}.')
 
-def _get_cells_from_cells_dict(cells_dict, key, mesh_type, cell_type):
+def _get_cells_from_cells_dict(cells_dict, key, input_type, cell_type):
     try:
         cells = cells_dict[key]
     except KeyError:
         elem_name = 'tetrahedral' if cell_type == 'tet' else 'triangular'   
-        raise ValueError(f"cells_dict of {mesh_type} mesh does not contain {key} key; "
+        raise ValueError(f"cells_dict of {input_type} mesh does not contain {key} key; "
                          f"are you sure you provided a {elem_name} mesh?")
     return cells
 
-def _reshape_cells_array(cells, mesh_type, cell_type):
+def _reshape_cells_array(cells, input_type, cell_type):
     vert_per_elem = 4 if cell_type == 'tet' else 3
     try:
         cells = cells.reshape(-1, vert_per_elem)
     except ValueError:
         elem_name = 'tetrahedral' if cell_type == 'tet' else 'triangular' 
-        raise ValueError(f'Failed to reshape cells of {elem_name} {mesh_type} mesh into ' 
+        raise ValueError(f'Failed to reshape cells of {elem_name} {input_type} mesh into ' 
                          f'N×{vert_per_elem} array, since it contained {flattened_cells.size} elements.')
     return cells
 
-def _ensure_cells_are_ints(cells, epsilon=1e-6):
+def _ensure_cell_idxs_are_ints(cells, epsilon=1e-6):
     if np.any(np.mod(cells, 1) > epsilon):
         warnings.warn('cells contains floats; these values will be cast to integers.')
     return np.array(cells, dtype=int)
@@ -127,7 +159,7 @@ def _check_points_and_cells(coords, cells, cell_type):
                          f'but only N = {coords.shape[0]} vertices were listed in points.')
         
 #
-#   Element Subdivision
+#   Subdivision Methods
 #
 
 def _subdivide_mesh(points, cells, cell_type):
@@ -286,28 +318,43 @@ def _create_local_idx_str(verts):
     return ''.join(str(val) for val in verts)
 
 #
-#   Post-Processing
+#   Post-Processing Methods
 #
 
-def _create_mesh(points, cells, mesh, mesh_type, cell_type):
+def _create_mesh(points, cells, mesh, output_type, cell_type):
+    
     # Some mesh formats throw errors if cells doesn't consist of ints:
     cells = np.array(cells, dtype=int)
-    if mesh_type is None:
+    
+    if output_type is None:
         mesh = {'points': points, 'cells': cells}
-    elif 'meshio' in mesh_type:
-        import meshio
+    
+    elif 'meshio' in output_type:
+        try:
+            import meshio
+        except ImportError:
+            raise ValueError('meshio must be installed to output a meshio mesh.')
         cell_key = 'hexahedron' if cell_type=='tet' else 'quad'
         mesh = meshio.Mesh(points=points, cells={cell_key: cells})
-    elif 'pyvista' in mesh_type:
-        import pyvista, vtk
+    
+    elif 'pyvista' in output_type:
+        try:
+            import pyvista, vtk
+        except ImportError:
+            raise ValueError('pyvista and vtk must be installed to output a pyvista mesh.')
         cell_key = vtk.VTK_HEXAHEDRON if cell_type=='tet' else vtk.VTK_QUAD
         mesh = pyvista.UnstructuredGrid({cell_key: cells}, points)
-    elif 'dolfinx' in mesh_type:
+    
+    elif 'dolfinx' in output_type:
         # Hexahedra and quadrilaterals are assigned unique identifying int - See: http://gmsh.info//doc/texinfo/gmsh.html#MSH-file-format
-        import dolfinx, mpi4py
+        try:
+            import dolfinx, mpi4py
+        except ImportError:
+            raise ValueError('dolfinx and mpi4py must be installed to output a dolfinx mesh.')
         gmsh_mesh_num = 5 if cell_type=='tet' else 3
         num_spatial_dim = points.shape[-1]
         domain = dolfinx.io.ufl_mesh_from_gmsh(gmsh_mesh_num, num_spatial_dim)
-        mesh = dolfinx.mesh.create_mesh(mpi4py.COMM_WORLD, cells, points, domain)
-        
+        ufl_cell_type = dolfinx.cpp.mesh.to_type(str(domain.ufl_cell()))
+        cells = cells[:, dolfinx.cpp.io.perm_gmsh(ufl_cell_type, cells.shape[1])]
+        mesh = dolfinx.mesh.create_mesh(mpi4py.MPI.COMM_WORLD, cells, points, domain)
     return mesh   
