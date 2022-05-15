@@ -65,9 +65,15 @@ label_decimals=0, zoom=1, deform_factor=1):
 #   Mesh Conversion
 #
 
+_vtk_idx = {'hexahedron': vtk.VTK_HEXAHEDRON,
+            'tetra': vtk.VTK_TETRA,
+            'quad': vtk.VTK_QUAD,
+            'triangle': vtk.VTK_TRIANGLE}
 def create_pyvista_grid(mesh):
     mesh_class = str(type(mesh))
-    if 'dolfinx' in str(type(mesh)):
+    if isinstance(mesh, dict):
+        grid = _create_grid_from_dict(mesh)
+    elif 'dolfinx' in str(type(mesh)):
         grid = _create_grid_from_dolfinx(mesh)
     elif 'meshio' in str(type(mesh)):
         grid = _create_grid_from_meshio(mesh)
@@ -77,16 +83,17 @@ def create_pyvista_grid(mesh):
         raise ValueError('Invalid mesh type; must choose between dolfinx, meshio, or pyvista mesh.')
     return grid
 
+def _create_grid_from_dict(mesh):
+    vtk_idx = _vtk_idx[mesh['cell_geom']]
+    points = _ensure_points_3d(mesh['points'])
+    return pyvista.UnstructuredGrid({vtk_idx: mesh['cells']}, points)
+
 def _create_grid_from_dolfinx(mesh):
     import dolfinx 
     V = dolfinx.fem.FunctionSpace(mesh, ("CG", 1))
     grid = pyvista.UnstructuredGrid(*dolfinx.plot.create_vtk_mesh(V))
     return grid
 
-_vtk_idx = {'hexahedron': vtk.VTK_HEXAHEDRON,
-            'tetra': vtk.VTK_TETRA,
-            'quad': vtk.VTK_QUAD,
-            'triangle': vtk.VTK_TRIANGLE}
 def _create_grid_from_meshio(mesh):
     identified_mesh_type = False
     for cell_key, vtk_idx in _vtk_idx.items():
@@ -102,6 +109,12 @@ def _create_grid_from_meshio(mesh):
     if not identified_mesh_type:
         raise ValueError('Unsupported meshio element type.')
     return grid
+
+def _ensure_points_3d(points):
+    if points.shape[-1] == 2:
+        zeros = np.zeros((points.shape[0], 1))
+        points = np.concatenate([points, zeros], axis=1)
+    return points
 
 #
 #   Misc
