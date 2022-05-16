@@ -2,7 +2,7 @@
 
 ## Overview
 
-`tetridiv` subdivides tetrahedral meshes into hexahedral meshes and triangular meshes into quadrilateral ones. The motivating use-case for `tetridiv` was so that [`dolfinx`](https://github.com/FEniCS/dolfinx) meshes could be easily subdivided, although `tetrigen` is also capable of working with [`meshio`](https://github.com/nschloe/meshio), [`pyvista`](https://github.com/pyvista/pyvista), and [`tetgen`](https://github.com/pyvista/tetgen) meshes. Since all of the computationally-intensive subdivision operations are vectorised, `tetrigen` should be relatively quick, even for large meshes, despite being written purely in Python.
+`tetridiv` subdivides tetrahedral meshes into hexahedral meshes and triangular meshes into quadrilateral ones. The motivating use-case for `tetridiv` was so that [`dolfinx`](https://github.com/FEniCS/dolfinx) meshes could be easily subdivided, although `tetridiv` is also capable of working with [`meshio`](https://github.com/nschloe/meshio), [`pyvista`](https://github.com/pyvista/pyvista), and [`tetgen`](https://github.com/pyvista/tetgen) meshes. Since all of the computationally-intensive subdivision operations are vectorised, `tetridiv` should be relatively quick, even for large meshes, despite being written purely in Python.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ In this case:
 - `tetrahedral_cells` is an `(M,4)` array whose `i'th` row lists the vertex indices which make up the `i'th` tetrahedral in the mesh, where M is the number of tetrahedral elements in the mesh. The order of the vertices should *not* affect the outputted mesh.
 - `triangular_cells` is an `(M,3)` array whose `i'th` row lists the vertex indices which make up the `i'th` triangle in the mesh, where M is the number of triangular elements in the mesh. The order of the vertices should *not* affect the outputted mesh.
 
-Please refer to the Jupyter notebooks in the `examples` folder for more specific examples on how to use `tetrigen`.
+Please refer to the Jupyter notebooks in the `examples` folder for more specific examples on how to use `tetridiv`.
 
 ## Installation
 
@@ -43,7 +43,7 @@ Tetrahedral mesh are convenient since they can easily be generated from surface 
 
 In an ideal world, one would be; unfortunately, generating a hexahedral mesh from surface data is a highly non-trivial problem with no standard 'silver bullet' solution. One particularly naive solution to this problem is to first create a tetrahedral mesh and then subdivide this tetrahedral mesh into a hexahedral one. Please refer to [[2]](#2) for more details on this.
 
-Although this 'tetrahedralise-then-subdivide' algorithm is simple, I've yet to come across any easy-to-use, Pythonic implementationswhich easily interfaces with other Python packages. `tetrigen` is my attempt to provide a simple, 'no-nonsense' implementation of this algorithm.
+Although this 'tetrahedralise-then-subdivide' algorithm is simple, I've yet to come across any easy-to-use, Pythonic implementationswhich easily interfaces with other Python packages. `tetridiv` is my attempt to provide a simple, 'no-nonsense' implementation of this algorithm.
 
 ## Key Limitations
 
