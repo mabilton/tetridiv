@@ -2,7 +2,7 @@
 
 ## Overview
 
-`tetridiv` subdivides tetrahedral meshes into hexahedral meshes and triangular meshes into quadrilateral ones. The motivating use-case for `tetridiv` was so that [`dolfinx`](https://github.com/FEniCS/dolfinx) meshes could be easily subdivided, although `tetridiv` is also capable of working with [`meshio`](https://github.com/nschloe/meshio), [`pyvista`](https://github.com/pyvista/pyvista), and [`tetgen`](https://github.com/pyvista/tetgen) meshes. Since all of the computationally-intensive subdivision operations are vectorised, `tetridiv` should be relatively quick, even for large meshes, despite being written purely in Python.
+`tetridiv` subdivides tetrahedral meshes into hexahedral meshes and triangular meshes into quadrilateral ones. The motivating use-case for `tetridiv` was so that [`dolfinx`](https://github.com/FEniCS/dolfinx) meshes could be easily subdivided, although `tetridiv` is also capable of working with [`meshio`](https://github.com/nschloe/meshio), [`pyvista`](https://github.com/pyvista/pyvista), and [`tetgen`](https://github.com/pyvista/tetgen) meshes. Since all computationally-intensive subdivision operations are vectorised, `tetridiv` should be relatively quick, even for large meshes, despite being written purely in Python.
 
 ## Example Usage
 
@@ -39,17 +39,17 @@ pip install git+https://github.com/MABilton/tetridiv
 
 ## Why Subdivide Meshes?
 
-Tetrahedral mesh are convenient since they can easily be generated from surface data, even for complex surface geometries; the [`tetgen`](https://github.com/pyvista/tetgen) package provides one such implementation. However, tetrahedral meshes exhibit undesirable behaviours in certain applications. In Finite Element Method simulations of non-linear mechanics for instance, tetrahedral meshes tend to exhibit 'volumetric locking', which causes them to behave in an artificially stiff manner. Conversely, hexahedral meshes tend not to exhibit this locking phenonemenon. For a more thorough description of the volumteric locking phenomenon, please refer to [[1]](#1).
+Tetrahedral meshes are convenient since they can easily be generated from surface data, even for complex surface geometries; the [`tetgen`](https://github.com/pyvista/tetgen) package provides one such implementation. However, tetrahedral meshes exhibit undesirable behaviours in certain applications. In Finite Element Method simulations of non-linear mechanics, for instance, tetrahedral meshes tend to exhibit 'volumetric locking', which causes them to behave artificially stiffly. Conversely, hexahedral meshes tend not to exhibit this locking phenomenon. For a more thorough description of the volumetric locking phenomenon, please refer to [[1]](#1).
 
-In an ideal world, one would be; unfortunately, generating a hexahedral mesh from surface data is a highly non-trivial problem with no standard 'silver bullet' solution. One particularly naive solution to this problem is to first create a tetrahedral mesh and then subdivide this tetrahedral mesh into a hexahedral one. Please refer to [[2]](#2) for more details on this.
+In an ideal world, one would be able to generate a hexahedral mesh from any arbitrarily complicated surface directly; unfortunately, generating a hexahedral mesh from surface data is a highly non-trivial problem with no standard 'silver bullet' solution. One particularly naive solution to this problem is to first create a tetrahedral mesh and then subdivide this tetrahedral mesh into a hexahedral one. Please refer to [[2]](#2) for more details on this.
 
-Although this 'tetrahedralise-then-subdivide' algorithm is simple, I've yet to come across any easy-to-use, Pythonic implementationswhich easily interfaces with other Python packages. `tetridiv` is my attempt to provide a simple, 'no-nonsense' implementation of this algorithm.
+Although this 'tetrahedralise-then-subdivide' algorithm is simple, I've yet to come across any easy-to-use, Pythonic implementations which easily interfaces with other Python packages. `tetridiv` is my attempt to provide a simple, 'no-nonsense' implementation of this algorithm.
 
 ## Key Limitations
 
-`tetridiv` is designed only to subdivide tetahedral and triangular meshes - it's not designed to subdivide any other kinds of mesh.
+`tetridiv` is designed only to subdivide tetrahedral and triangular meshes - it's not designed to subdivide any other kinds of mesh.
 
-Additionally, `tetridiv` is curently unable to work with mixed meshes (e.g. meshes composed of tetrahedral and hexahedral elements), although this functionality may be implemented at a later date.
+Additionally, `tetridiv` is currently unable to work with mixed meshes (e.g. meshes composed of tetrahedral and hexahedral elements), although this functionality may be implemented at a later date.
 
 ## References
 
