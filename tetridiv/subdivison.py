@@ -50,11 +50,11 @@ def _identify_mesh_type(mesh: Mesh) -> str:
     input_type = _take_first_match(input_type_matches)
     return input_type
 
-def _deduce_output_type(output_type: str, input_type: str) -> str:
+def _deduce_output_type(output_type: Optional[str], input_type: str) -> str:
     if output_type is None:
         output_type = input_type
     else:
-        output_type_name = output_type.lower()
+        output_type_name = str(output_type).lower()
         output_type_matches = [name in output_type_name for name in _supported_mesh_types]
         if not any(output_type_matches):
             raise ValueError(f"'{output_type}' is not a valid output type; either leave output_type argument unspecified "
@@ -281,7 +281,7 @@ def _assemble_hexahedrons(feature_verts: Dict[str, np.ndarray], new_verts: Dict[
     
     return cells
     
-def _assemble_quadrilaterals(feature_verts: Dict[str, np.ndarray],, new_verts: Dict[str, np.ndarray], local_vert_combos:  Dict[str, List[Tuple[int, ...]]]) -> np.ndarray:
+def _assemble_quadrilaterals(feature_verts: Dict[str, np.ndarray], new_verts: Dict[str, np.ndarray], local_vert_combos:  Dict[str, List[Tuple[int, ...]]]) -> np.ndarray:
     # Step 1: Create arrays of new vertex idx associated each feature of each element 
     # verts = {0: array with idx of vert 0 in each cell of mesh, ...}
     num_vert_in_face = 3 
