@@ -1,19 +1,23 @@
+from typing import Any, List, Dict, Tuple, Optional
 import warnings
 import importlib
 from itertools import combinations
 import numpy as np
 
+# Represents all mesh types (dictionary, dolfinx, pyvista, etc.)
+Mesh = Any
+
 #
 #   Main routines
 #
 
-def tet2hex(mesh=None, points=None, cells=None, output_type=None):
+def tet2hex(mesh: Optional[Mesh] = None, points: Optional[np.ndarray] = None, cells: Optional[np.ndarray] = None, output_type: Optional[str] = None) -> Mesh:
     return _main(mesh, points, cells, output_type, cell_geom='tet')
     
-def tri2quad(mesh=None, points=None, cells=None, output_type=None):
+def tri2quad(mesh: Optional[Mesh] = None, points: Optional[np.ndarray] = None, cells: Optional[np.ndarray] = None, output_type:  Optional[str] = None) -> Mesh:
     return _main(mesh, points, cells, output_type, cell_geom='tri')
 
-def _main(mesh, points, cells, output_type, cell_geom):
+def _main(mesh: Optional[Mesh], points: Optional[np.ndarray], cells: Optional[np.ndarray], output_type: Optional[str], cell_geom: str) -> Mesh:
     _verify_inputs(mesh, points, cells)
     mesh = _create_mesh_input(mesh, points, cells)
     input_mesh_type = _identify_mesh_type(mesh)
@@ -22,13 +26,13 @@ def _main(mesh, points, cells, output_type, cell_geom):
     points, cells = _subdivide_mesh(points, cells, cell_geom)
     return _create_mesh(points, cells, mesh, output_type, cell_geom)
 
-def _verify_inputs(mesh, points, cells):
+def _verify_inputs(mesh: Mesh, points: Optional[np.ndarray], cells: Optional[np.ndarray]) -> None:
     if (mesh is None) and ((points is None) or (cells is None)):
         raise ValueError('Must specify either mesh OR points and cells as input(s).')
     elif all(val is not None for val in [mesh, points, cells]):
         raise ValueError('Must specify either mesh OR points and cells, but not both.')
 
-def _create_mesh_input(mesh, points, cells):
+def _create_mesh_input(mesh: Mesh, points: Optional[np.ndarray], cells: Optional[np.ndarray]) -> Mesh:
     if mesh is None:
         mesh = {'points': points, 'cells': cells}
     if 'tetgen' in str(type(mesh)):
@@ -36,7 +40,7 @@ def _create_mesh_input(mesh, points, cells):
     return mesh
 
 _supported_mesh_types = ('dict', 'meshio', 'pyvista', 'dolfinx')
-def _identify_mesh_type(mesh):
+def _identify_mesh_type(mesh: Mesh) -> str:
     class_name = str(type(mesh))
     input_type_matches = [name in class_name for name in _supported_mesh_types]
     if not any(input_type_matches):
@@ -46,11 +50,11 @@ def _identify_mesh_type(mesh):
     input_type = _take_first_match(input_type_matches)
     return input_type
 
-def _deduce_output_type(output_type, input_type):
+def _deduce_output_type(output_type: str, input_type: str) -> str:
     if output_type is None:
         output_type = input_type
     else:
-        output_type_name = str(output_type).lower()
+        output_type_name = output_type.lower()
         output_type_matches = [name in output_type_name for name in _supported_mesh_types]
         if not any(output_type_matches):
             raise ValueError(f"'{output_type}' is not a valid output type; either leave output_type argument unspecified "
@@ -58,7 +62,7 @@ def _deduce_output_type(output_type, input_type):
         output_type = _take_first_match(output_type_matches)
     return output_type
 
-def _take_first_match(mesh_matches):
+def _take_first_match(mesh_matches: List[bool]) -> str:
     mesh_type_idx = np.argmax(mesh_matches)
     mesh_type = _supported_mesh_types[mesh_type_idx]
     return mesh_type
@@ -67,14 +71,14 @@ def _take_first_match(mesh_matches):
 #   Point & Cells Retrieval Methods
 #
 
-def _get_points_and_cells(mesh, mesh_type, cell_geom):
+def _get_points_and_cells(mesh: Mesh, mesh_type: str, cell_geom: str) -> Tuple[np.ndarray, np.ndarray]:
     points = _get_points(mesh, mesh_type)
     cells = _get_cells(mesh, mesh_type, cell_geom)
     cells = _ensure_cell_idxs_are_ints(cells)
     _check_points_and_cells(points, cells, cell_geom)
     return points, cells
 
-def _get_points(mesh, mesh_type):
+def _get_points(mesh: Mesh, mesh_type: str) -> np.ndarray:
     if mesh_type=='dict':
         points = np.array(mesh['points'])
     elif mesh_type=='meshio':
@@ -85,7 +89,7 @@ def _get_points(mesh, mesh_type):
         points = mesh.geometry.x
     return points
     
-def _get_cells(mesh, mesh_type, cell_geom):
+def _get_cells(mesh: Mesh, mesh_type: str, cell_geom: str) -> np.ndarray:
     if mesh_type=='dict':
         cells = _get_cells_from_mesh_dict(mesh)
     elif mesh_type=='meshio':
@@ -99,14 +103,14 @@ def _get_cells(mesh, mesh_type, cell_geom):
         cells = _get_cells_from_dolfinx_mesh(mesh, cell_geom)
     return cells    
 
-def _get_cells_from_mesh_dict(mesh_dict):
+def _get_cells_from_mesh_dict(mesh_dict: Dict[str, np.ndarray]) -> np.ndarray:
     try:
         cells = np.array(mesh_dict['cells'])
     except KeyError:
         raise KeyError("Mesh dictionary doesn't contain a 'cells' key.")
     return cells
 
-def _get_cells_from_cells_dict(cells_dict, key, mesh_type, cell_geom):
+def _get_cells_from_cells_dict(cells_dict: Dict[str, np.ndarray], key: str, mesh_type: str, cell_geom: str) -> np.ndarray:
     try:
         cells = cells_dict[key]
     except KeyError:
@@ -115,7 +119,7 @@ def _get_cells_from_cells_dict(cells_dict, key, mesh_type, cell_geom):
                          f"are you sure you provided a {elem_name} mesh?")
     return cells
 
-def _get_cells_from_dolfinx_mesh(mesh, cell_geom):
+def _get_cells_from_dolfinx_mesh(mesh: Mesh, cell_geom: str) -> np.ndarray:
     # Could get segfault if we don't check that mesh is correct topology:
     actual_cell_geom = str(mesh.topology.cell_name())
     if cell_geom not in actual_cell_geom:
@@ -127,12 +131,12 @@ def _get_cells_from_dolfinx_mesh(mesh, cell_geom):
     cells = flattened_cells.reshape(-1, vert_per_elem)
     return cells
 
-def _ensure_cell_idxs_are_ints(cells, epsilon=1e-6):
+def _ensure_cell_idxs_are_ints(cells: np.ndarray, epsilon: float = 1e-6) -> np.ndarray:
     if np.any(np.mod(cells, 1) > epsilon):
         warnings.warn('cells contains floats; these values will be cast to integers.')
     return np.array(cells, dtype=int)
 
-def _check_points_and_cells(coords, cells, cell_geom):
+def _check_points_and_cells(coords: np.ndarray, cells: np.ndarray, cell_geom: str) -> None:
     if coords.ndim != 2:
         raise ValueError(f'Expected points to be a 2d array; instead, it was a {coords.ndim}d array.')
     if (cell_geom == 'tet') & (coords.shape[-1] != 3):
@@ -155,10 +159,10 @@ def _check_points_and_cells(coords, cells, cell_geom):
 #   Subdivision Methods
 #
 
-def _subdivide_mesh(points, cells, cell_geom):
+def _subdivide_mesh(points: np.ndarray, cells: np.ndarray, cell_geom: str) -> Tuple[np.ndarray, np.ndarray]:
 
     # points.shape = (num_vert, num_spatial_dim)
-    # cells.shape = 
+    # cells.shape = (num_vert, num_vert_per_element)
     # cell_geom = 'tet' or 'tri'
     
     # Get all possible combinations of local vertices which can be used to construct features (i.e. edges, faces, and olumes)
@@ -218,7 +222,7 @@ def _subdivide_mesh(points, cells, cell_geom):
     
     return points, cells
 
-def _create_vert_combos(cell_geom):
+def _create_vert_combos(cell_geom: str) -> List[Tuple[int, ...]]:
     vert_per_cell = 4 if cell_geom == 'tet' else 3
     # Edge defined by 2 vertices, face defined by 3 vertices:
     # e.g. if vert_per_cell = 3, then vert_combos['edge'] = [(0,1), (0,2), (1,2)]
@@ -228,7 +232,7 @@ def _create_vert_combos(cell_geom):
         vert_combos['vol'] = list(combinations(range(vert_per_cell), 4))
     return vert_combos
 
-def _order_tet_local_verts_by_height(points, cells, local_vert_combos):
+def _order_tet_local_verts_by_height(points: np.ndarray, cells: np.ndarray, local_vert_combos: Dict[str, List[Tuple[int, ...]]]) -> np.ndarray:
     # Get global indices of vertices which comprise each tet:
     vert_idx = cells[:,local_vert_combos['vol']] # shape = (num_tet, num_vol_per_tet=1, num_vert_per_vol=4)
     # Get coordinates of these vertices:
@@ -239,7 +243,7 @@ def _order_tet_local_verts_by_height(points, cells, local_vert_combos):
     cells = np.take_along_axis(cells, z_sort, axis=-1)
     return cells
 
-def _assemble_hexahedrons(feature_verts, new_verts, local_vert_combos):
+def _assemble_hexahedrons(feature_verts: Dict[str, np.ndarray], new_verts: Dict[str, np.ndarray], local_vert_combos: Dict[str, List[Tuple[int, ...]]]) -> np.ndarray:
     
     # Step 1: Create arrays of new vertex idx associated each feature of each element 
     # verts = {0: array with idx of vert 0 in each cell of mesh, ...}
@@ -277,7 +281,7 @@ def _assemble_hexahedrons(feature_verts, new_verts, local_vert_combos):
     
     return cells
     
-def _assemble_quadrilaterals(feature_verts, new_verts, local_vert_combos):
+def _assemble_quadrilaterals(feature_verts: Dict[str, np.ndarray],, new_verts: Dict[str, np.ndarray], local_vert_combos:  Dict[str, List[Tuple[int, ...]]]) -> np.ndarray:
     # Step 1: Create arrays of new vertex idx associated each feature of each element 
     # verts = {0: array with idx of vert 0 in each cell of mesh, ...}
     num_vert_in_face = 3 
@@ -307,14 +311,14 @@ def _assemble_quadrilaterals(feature_verts, new_verts, local_vert_combos):
     
     return cells
     
-def _create_local_idx_str(verts):
+def _create_local_idx_str(verts: np.ndarray) -> str:
     return ''.join(str(val) for val in verts)
 
 #
 #   Post-Processing Methods
 #
 
-def _create_mesh(points, cells, mesh, output_type, cell_geom):
+def _create_mesh(points: np.ndarray, cells: np.ndarray, mesh: Mesh, output_type: str, cell_geom: str) -> Mesh:
     
     # Some mesh formats throw errors if cells doesn't consist of ints:
     cells = np.array(cells, dtype=int)
