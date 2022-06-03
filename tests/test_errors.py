@@ -50,7 +50,7 @@ invalid_meshes = {'int': 1, 'array': np.ones((2,2)), 'str': 'abc', 'tuple': (1,'
 @pytest.mark.parametrize("tetridiv_method", tetridiv_methods.values(), 
                          ids=[f'method_={method}' for method in tetridiv_methods.keys()])
 def test_unsupported_mesh_type(mesh, tetridiv_method):
-    with pytest.raises(ValueError, match='convert your mesh to one of the following formats'):
+    with pytest.raises(TypeError, match='convert your mesh to one of the following formats'):
         tetridiv_method(mesh=mesh)
 
 @pytest.mark.parametrize("mesh_dir", tet2hex_test_dirs, ids=tet2hex_test_names)
@@ -121,5 +121,5 @@ invalid_outputs = ('tetgen', 'abc', 1, np.array([2]))
 @pytest.mark.parametrize("mesh_dir", tri2quad_test_dirs, ids=tri2quad_test_names)
 def test_invalid_output_mesh_type(mesh_dir, invalid_output_type):
     input_mesh, _ = utils.load_meshes(mesh_dir)
-    with pytest.raises(ValueError, match='not a valid output type'):
+    with pytest.raises(TypeError, match='not a valid output type'):
         tetridiv.tri2quad(mesh=input_mesh, output_type=invalid_output_type)

@@ -5,3 +5,5 @@ build*
 *.ipynb_checkpoints*
 .local
 .cache
+.ipython
+.jupyter

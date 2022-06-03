@@ -4,8 +4,11 @@ import numpy as np
 import vtk
 import pyvista
 import meshio
-import dolfinx 
 import mpi4py
+try:
+    import dolfinx 
+except ImportError:
+    continue
 
 def get_mesh_file_names_and_dirs(parent_dir):
     mesh_files = os.listdir(parent_dir)
