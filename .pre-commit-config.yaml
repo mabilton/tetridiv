@@ -5,6 +5,13 @@ repos:
     -   id: check-yaml
     -   id: end-of-file-fixer
     -   id: trailing-whitespace
+-   repo: https://github.com/pycqa/pydocstyle
+    rev: 6.1.1
+    hooks:
+    -   id: pydocstyle
+        args:
+        - --ignore=D212,D413
+        files: ^tetridiv/
 -   repo: https://github.com/asottile/seed-isort-config
     rev: v1.9.3
     hooks:
@@ -14,10 +21,11 @@ repos:
     hooks:
     -   id: isort
 -   repo: https://github.com/psf/black
-    rev: 19.10b0
+    rev: 22.3.0
     hooks:
-    -    id: black
+    - id: black
+      language_version: python3.8
 -   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.8.3
+    rev: 4.0.1
     hooks:
     -   id: flake8

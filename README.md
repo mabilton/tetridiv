@@ -53,8 +53,8 @@ Additionally, `tetridiv` is currently unable to work with mixed meshes (e.g. mes
 
 ## References
 
-<a id="1">[1]</a> 
+<a id="1">[1]</a>
 Tadepalli SC, Erdemir A, Cavanagh PR. *Comparison of hexahedral and tetrahedral elements in finite element analysis of the foot and footwear*. J Biomech. 2011; 44(12):2337-2343. doi:10.1016/j.jbiomech.2011.05.006. [PubMed Link](https://pubmed.ncbi.nlm.nih.gov/21742332/).
 
-<a id="2">[2]</a> 
+<a id="2">[2]</a>
 Pietroni N, Campen M, Sheffer A, Cherchi G, Bommes D, Gao X, Scateni R, Ledoux F, Remacle JF, Livesu M. *Hex-Mesh Generation and Processing: a Survey*. arXiv preprint. 2022; arXiv:2202.12670. doi:10.48550/arXiv.2202.12670. [arXiv Link](https://arxiv.org/abs/2202.12670).
