@@ -9,3 +9,12 @@ build-backend = "setuptools.build_meta"
 norecursedirs = [
   "*__pycache__"
 ]
+
+[tool.black]
+line-length = 88
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+)/
+'''
