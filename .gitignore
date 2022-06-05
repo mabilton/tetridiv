@@ -7,3 +7,5 @@ build*
 .cache
 .ipython
 .jupyter
+.config
+.fltk
